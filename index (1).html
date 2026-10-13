@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MPI Sad Darsana - Kosmik Luar Angkasa</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config = { darkMode: 'class', theme: { extend: { animation: { 'pulse-glow': 'pg 3s ease-in-out infinite', float: 'fl 6s ease-in-out infinite' },
+keyframes: { pg: { '0%,100%': { opacity: .5, transform: 'scale(1)' }, '50%': { opacity: .9, transform: 'scale(1.05)' } }, fl: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-8px)' } } } } } };
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cinzel:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+<style>
+:root { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: #030014; color: #f8fafc; overflow-x: hidden; margin: 0; }
+.cinzel { font-family: 'Cinzel', Georgia, serif; }
+::-webkit-scrollbar { width: 8px } ::-webkit-scrollbar-track { background: #030014 } ::-webkit-scrollbar-thumb { background: #4c1d95; border-radius: 4px }
+.glass-panel { background: rgba(15,12,41,.75); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(139,92,246,.25); }
+.glass-card { background: rgba(21,15,59,.55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(192,132,252,.15); transition: all .3s; }
+.glass-card:hover { border-color: rgba(192,132,252,.5); box-shadow: 0 0 25px rgba(139,92,246,.3); transform: translateY(-3px); }
+.cosmic-gradient { background: linear-gradient(135deg,#8b5cf6,#ec4899 50%,#3b82f6); }
+.text-glow { text-shadow: 0 0 20px rgba(192,132,252,.6); }
+.grad-text { background: linear-gradient(135deg,#8b5cf6,#ec4899 50%,#3b82f6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+#starfield { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+.opt { text-align: left; width: 100%; padding: 14px 18px; border-radius: 14px; }
+.opt.ok { border-color: #22c55e; background: rgba(34,197,94,.2) }
+.opt.bad { border-color: #ef4444; background: rgba(239,68,68,.2) }
+button:focus-visible { outline: 2px solid #c084fc; outline-offset: 2px }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important } }
+</style>
+</head>
+<body class="min-h-screen flex flex-col">
+<canvas id="starfield"></canvas>
+
+<div id="gate" class="fixed inset-0 z-[100] overflow-y-auto flex items-center justify-center p-4" style="background:rgba(3,0,20,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding-top:max(1rem,env(safe-area-inset-top,0px));padding-bottom:max(1rem,env(safe-area-inset-bottom,0px))">
+  <form id="gate-form" onsubmit="submitGate(event)" class="glass-panel rounded-3xl w-full max-w-md p-7 lg:p-9 space-y-5 text-center" style="box-shadow:0 0 60px rgba(139,92,246,.35)" novalidate>
+    <div class="w-20 h-20 mx-auto rounded-3xl cosmic-gradient flex items-center justify-center text-4xl animate-float">🕉️</div>
+    <div class="space-y-1">
+      <p class="text-xs font-semibold tracking-widest text-purple-300">SELAMAT DATANG</p>
+      <h2 class="cinzel text-2xl lg:text-3xl font-bold text-glow">Penjelajah <span class="grad-text">Sad Darsana</span></h2>
+      <p class="text-sm text-purple-200/90">Isi identitasmu dulu sebelum memasuki galaksi. Data ini otomatis dipakai pada sertifikatmu.</p>
+    </div>
+    <div class="space-y-3 text-left">
+      <label class="block text-xs font-semibold text-purple-300" for="gate-name">Nama lengkap</label>
+      <input id="gate-name" type="text" maxlength="45" autocomplete="name" placeholder="Contoh: Ni Putu Ayu Lestari" class="w-full px-4 py-3 rounded-xl bg-black/30 border border-purple-400/30 text-white placeholder-purple-300/50 outline-none focus:border-pink-400">
+      <label class="block text-xs font-semibold text-purple-300" for="gate-absen">Nomor absen</label>
+      <input id="gate-absen" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="Contoh: 07" class="w-full px-4 py-3 rounded-xl bg-black/30 border border-purple-400/30 text-white placeholder-purple-300/50 outline-none focus:border-pink-400">
+      <p id="gate-error" class="text-xs text-pink-300 min-h-[1rem]" role="alert"></p>
+    </div>
+    <button type="submit" class="w-full px-6 py-3.5 rounded-2xl cosmic-gradient font-bold hover:scale-105 transition">Masuk ke galaksi 🚀</button>
+  </form>
+</div>
+
+<header class="sticky top-0 z-50 glass-panel px-4 lg:px-8 py-3" style="top: env(safe-area-inset-top, 0px)">
+  <div class="max-w-7xl mx-auto flex items-center justify-between">
+    <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('home')">
+      <div class="w-10 h-10 rounded-xl cosmic-gradient flex items-center justify-center text-xl animate-float">⚛️</div>
+      <div>
+        <h1 class="cinzel font-bold text-lg tracking-wider text-glow">SAD DARSANA</h1>
+        <p class="text-xs text-purple-300">Media Pembelajaran Interaktif Kosmik</p>
+      </div>
+    </div>
+    <nav class="hidden md:flex items-center gap-1" id="nav-desktop"></nav>
+    <div class="flex items-center gap-2">
+      <button onclick="openGate()" id="user-chip" title="Ubah identitas" class="hidden items-center gap-2 px-3 h-10 rounded-xl glass-card text-xs font-semibold text-purple-200 max-w-[9.5rem] sm:max-w-[16rem]"><span>👤</span><span id="user-chip-text" class="truncate"></span></button>
+      <button onclick="toggleAudio()" id="audio-toggle" title="Putar musik kosmik" class="w-10 h-10 rounded-xl glass-card flex items-center justify-center"><span id="audio-icon">🔇</span></button>
+      <button onclick="document.getElementById('mobile-menu').classList.toggle('hidden')" class="md:hidden w-10 h-10 rounded-xl glass-card flex items-center justify-center" aria-label="Menu">☰</button>
+    </div>
+  </div>
+  <div id="mobile-menu" class="hidden md:hidden mt-3 pt-3 border-t border-purple-900/40 flex flex-col gap-1"></div>
+</header>
+
+<main class="flex-grow max-w-7xl w-full mx-auto px-4 lg:px-8 py-8 relative z-10">
+
+<section id="tab-home" class="tab-content space-y-10">
+  <div class="rounded-3xl glass-panel p-8 lg:p-14 space-y-6">
+    <div class="inline-block px-3 py-1.5 rounded-full bg-purple-500/20 border border-purple-400/30 text-purple-300 text-xs font-semibold">✨ Eksplorasi Filsafat Hindu</div>
+    <p id="hello" class="text-purple-200 font-semibold"></p>
+    <h2 class="cinzel text-4xl lg:text-6xl font-bold text-glow max-w-3xl">Mengarungi Galaksi <span class="grad-text">Sad Darsana</span></h2>
+    <p class="text-purple-200/90 lg:text-lg max-w-2xl leading-relaxed">Pelajari enam sistem filsafat ortodoks Hindu melalui materi ringkas, peta konsep, kuis 12 soal, dan game orbit.</p>
+    <div class="flex flex-wrap gap-3">
+      <button onclick="switchTab('materi')" class="px-7 py-3.5 rounded-2xl cosmic-gradient font-bold hover:scale-105 transition">Mulai belajar</button>
+      <button onclick="switchTab('kuis')" class="px-7 py-3.5 rounded-2xl glass-card font-bold text-purple-200">Uji pemahaman</button>
+    </div>
+  </div>
+  <div class="glass-panel rounded-3xl p-6 lg:p-10 space-y-5">
+    <h3 class="cinzel font-bold text-2xl text-glow">🧭 Petunjuk penggunaan</h3>
+    <ol class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-purple-200">
+      <li class="glass-card rounded-2xl p-4"><b class="grad-text">1. Materi.</b> Pilih salah satu dari enam darsana untuk membaca pendiri, kitab dasar, dan ajaran pokoknya.</li>
+      <li class="glass-card rounded-2xl p-4"><b class="grad-text">2. Peta Konsep.</b> Klik kartu darsana untuk langsung menuju materinya.</li>
+      <li class="glass-card rounded-2xl p-4"><b class="grad-text">3. Kuis Kosmik.</b> Jawab 12 soal pilihan ganda. Tiap jawaban benar bernilai 10 poin.</li>
+      <li class="glass-card rounded-2xl p-4"><b class="grad-text">4. Game Orbit.</b> Tekan mulai, lalu cocokkan petunjuk dengan jawaban yang tepat dalam 10 putaran.</li>
+      <li class="glass-card rounded-2xl p-4 md:col-span-2"><b class="grad-text">5. Sertifikat.</b> Dapatkan skor minimal 70 pada kuis. Sertifikat otomatis memakai nama dan nomor absen yang kamu isi saat masuk, tinggal tekan "Unduh sertifikat".</li>
+    </ol>
+  </div>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+    <div class="glass-card p-6 rounded-3xl space-y-3"><div class="text-3xl">🌌</div><h3 class="cinzel font-bold text-xl">Visual kosmik</h3><p class="text-purple-200/80 text-sm">Bintang bergerak dan antarmuka gelap yang nyaman dibaca.</p></div>
+    <div class="glass-card p-6 rounded-3xl space-y-3"><div class="text-3xl">📜</div><h3 class="cinzel font-bold text-xl">Materi terstruktur</h3><p class="text-purple-200/80 text-sm">Nyaya, Vaisesika, Samkhya, Yoga, Mimamsa, dan Vedanta.</p></div>
+    <div class="glass-card p-6 rounded-3xl space-y-3"><div class="text-3xl">🏆</div><h3 class="cinzel font-bold text-xl">Kuis dan game</h3><p class="text-purple-200/80 text-sm">12 soal dengan umpan balik instan, plus game mencocokkan tokoh.</p></div>
+  </div>
+</section>
+
+<section id="tab-materi" class="tab-content hidden space-y-8">
+  <div class="text-center max-w-3xl mx-auto space-y-3">
+    <h2 class="cinzel text-3xl lg:text-4xl font-bold text-glow">Modul materi Sad Darsana</h2>
+    <p class="text-purple-200 text-sm lg:text-base">Pilih satu darsana untuk melihat pendiri, fokus kajian, dan intisari ajarannya.</p>
+  </div>
+  <div class="flex flex-wrap justify-center gap-2" id="materi-tabs"></div>
+  <div class="glass-panel rounded-3xl p-6 lg:p-10 space-y-6" id="materi-display-box"></div>
+</section>
+
+<section id="tab-peta" class="tab-content hidden space-y-8">
+  <div class="text-center max-w-3xl mx-auto space-y-3">
+    <h2 class="cinzel text-3xl lg:text-4xl font-bold text-glow">Peta konsep Sad Darsana</h2>
+    <p class="text-purple-200 text-sm lg:text-base">Enam aliran astika, yaitu aliran yang mengakui otoritas Weda. Ketuk satu untuk membuka materinya.</p>
+  </div>
+  <div class="glass-panel rounded-3xl p-8 flex flex-col items-center">
+    <div class="w-32 h-32 rounded-full cosmic-gradient flex flex-col items-center justify-center text-center p-3 animate-pulse-glow">
+      <span class="text-3xl">🕉️</span><span class="cinzel font-bold text-xs">SAD DARSANA</span><span class="text-[10px] text-purple-100">Enam pandangan</span>
+    </div>
+    <div class="w-px h-8 bg-purple-500/50"></div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full max-w-4xl" id="peta-grid"></div>
+  </div>
+</section>
+
+<section id="tab-kuis" class="tab-content hidden space-y-8">
+  <div class="text-center max-w-3xl mx-auto space-y-3">
+    <h2 class="cinzel text-3xl lg:text-4xl font-bold text-glow">Kuis kosmik Sad Darsana</h2>
+    <p class="text-purple-200 text-sm lg:text-base">12 soal pilihan ganda. Setiap jawaban benar bernilai 10 poin.</p>
+  </div>
+  <div class="max-w-3xl mx-auto glass-panel rounded-3xl p-6 lg:p-10" id="quiz-container">
+    <div id="quiz-start" class="text-center space-y-6 py-8">
+      <div class="w-20 h-20 mx-auto rounded-3xl cosmic-gradient flex items-center justify-center text-4xl animate-float">🧠</div>
+      <h3 class="cinzel text-2xl font-bold">Siap mengerjakan kuis?</h3>
+      <p class="text-purple-200 text-sm max-w-md mx-auto">Pilih satu jawaban per soal. Capai skor minimal 70 untuk membuka sertifikat.</p>
+      <button onclick="startQuiz()" class="px-8 py-4 rounded-2xl cosmic-gradient font-bold hover:scale-105 transition">Mulai kuis</button>
+    </div>
+    <div id="quiz-active" class="hidden space-y-6">
+      <div class="flex items-center justify-between text-xs text-purple-300 font-semibold border-b border-purple-900/50 pb-4">
+        <span id="quiz-progress-text">Soal 1 dari 12</span>
+        <span id="quiz-score-badge" class="px-3 py-1 rounded-full bg-purple-500/20 border border-purple-400/30">Skor: 0</span>
+      </div>
+      <h4 id="quiz-question" class="text-lg lg:text-xl font-bold leading-relaxed"></h4>
+      <div class="grid gap-3" id="quiz-options"></div>
+      <p id="quiz-feedback" class="text-sm text-purple-200 min-h-[1.5rem]"></p>
+      <div class="flex"><button id="quiz-next-btn" onclick="nextQuestion()" class="hidden px-6 py-3 rounded-xl cosmic-gradient font-bold ml-auto">Soal berikutnya</button></div>
+    </div>
+    <div id="quiz-result" class="hidden text-center space-y-6 py-8">
+      <div class="w-20 h-20 mx-auto rounded-3xl bg-green-500/20 border border-green-500/40 flex items-center justify-center text-4xl">🏅</div>
+      <h3 class="cinzel text-2xl font-bold">Kuis selesai</h3>
+      <div class="text-3xl font-extrabold grad-text" id="final-score-display"></div>
+      <p class="text-purple-200 text-sm" id="final-title"></p>
+      <div id="cert-box" class="hidden max-w-md mx-auto glass-card rounded-2xl p-5 space-y-3 text-left">
+        <p class="font-bold text-sm">🎓 Selamat! Sertifikatmu sudah siap</p>
+        <p class="text-xs text-purple-300">Atas nama <b id="cert-who" class="text-purple-100"></b></p>
+        <button onclick="downloadCert()" class="w-full px-6 py-3 rounded-xl cosmic-gradient font-bold">Unduh sertifikat (PNG)</button>
+      </div>
+      <div class="flex justify-center gap-3 pt-2">
+        <button onclick="resetQuiz()" class="px-6 py-3 rounded-2xl cosmic-gradient font-bold">Ulangi kuis</button>
+        <button onclick="switchTab('home')" class="px-6 py-3 rounded-2xl glass-card text-purple-200 font-bold">Ke beranda</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="tab-game" class="tab-content hidden space-y-8">
+  <div class="text-center max-w-3xl mx-auto space-y-3">
+    <h2 class="cinzel text-3xl lg:text-4xl font-bold text-glow">Game orbit</h2>
+    <p class="text-purple-200 text-sm lg:text-base">Pasangkan tokoh atau konsep dengan darsana yang tepat. Ada 10 putaran, setiap jawaban benar bernilai 10 poin.</p>
+  </div>
+  <div class="max-w-3xl mx-auto glass-panel rounded-3xl p-6 lg:p-10 space-y-6">
+    <div class="flex justify-between text-sm text-purple-300 font-semibold">
+      <span id="g-round">Putaran 0 / 10</span><span id="g-score">Skor: 0</span>
+    </div>
+    <div id="g-clue" class="cinzel text-center text-2xl lg:text-3xl font-bold min-h-[5rem] flex items-center justify-center text-glow">Tekan mulai untuk memutar orbit</div>
+    <div id="g-options" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+    <div class="text-center"><button id="g-start" onclick="startGame()" class="px-8 py-3 rounded-2xl cosmic-gradient font-bold hover:scale-105 transition">Mulai game</button></div>
+  </div>
+</section>
+
+<section id="tab-profil" class="tab-content hidden space-y-8">
+  <div class="text-center max-w-3xl mx-auto space-y-3">
+    <h2 class="cinzel text-3xl lg:text-4xl font-bold text-glow">Kelompok 3</h2>
+    <p class="text-purple-200 text-sm lg:text-base">Tim pengembang media pembelajaran Sad Darsana.</p>
+  </div>
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="profil-grid"></div>
+</section>
+</main>
+
+<footer class="relative z-10 border-t border-purple-900/40 py-6 text-center text-xs text-purple-300">
+  © 2026 MPI Sad Darsana · Kelompok 3
+</footer>
+
+<script>
+let USER = { nama: '', absen: '' };
+const TABS = [['home','🏠','Beranda'],['materi','📖','Materi'],['peta','🧭','Peta Konsep'],['kuis','🧠','Kuis Kosmik'],['game','🎮','Game Orbit'],['profil','👥','Kelompok 3']];
+const DARSANA = [
+ {n:'Nyaya',t:'Rsi Gautama',f:'Logika dan epistemologi',d:'Nyaya mengajarkan cara memperoleh pengetahuan yang benar (pramana) melalui penalaran yang runtut.',p:['Empat pramana: pratyaksa (pengamatan), anumana (penyimpulan), upamana (perbandingan), sabda (kesaksian)','Tujuan: bebas dari penderitaan lewat pengetahuan yang benar','Kitab dasar: Nyaya Sutra']},
+ {n:'Vaisesika',t:'Rsi Kanada',f:'Pluralisme dan atomistik',d:'Vaisesika menjelaskan alam semesta tersusun dari atom (paramanu) dan dikelompokkan dalam kategori realitas (padartha).',p:['Padartha: dravya, guna, karma, samanya, visesa, samavaya','Materi tersusun dari atom yang kekal','Kitab dasar: Vaisesika Sutra']},
+ {n:'Samkhya',t:'Rsi Kapila',f:'Dualisme Purusa dan Prakrti',d:'Samkhya membedakan kesadaran murni (Purusa) dari materi alam (Prakrti) yang tersusun atas tiga guna.',p:['Tiga guna: sattwa, rajas, tamas','Pembebasan terjadi saat Purusa disadari terpisah dari Prakrti','Kitab dasar: Samkhya Karika dan Samkhya Sutra']},
+ {n:'Yoga',t:'Rsi Patanjali',f:'Pengendalian diri dan meditasi',d:'Yoga menekankan disiplin pikiran dan tubuh untuk mencapai penyatuan dengan Tuhan.',p:['Astangga Yoga, delapan tahap: yama, niyama, asana, pranayama, pratyahara, dharana, dhyana, samadhi','Yoga adalah pengendalian gerak pikiran (citta wrtti nirodha)','Kitab dasar: Yoga Sutra']},
+ {n:'Mimamsa',t:'Rsi Jaimini',f:'Ritual dan hermeneutika Weda',d:'Mimamsa menafsirkan bagian ritual Weda (Karma Kanda) dan menekankan kewajiban dharma lewat pelaksanaan yajna.',p:['Fokus pada bagian ritual Weda','Dharma dipahami sebagai kewajiban yang diperintahkan Weda','Kitab dasar: Mimamsa Sutra']},
+ {n:'Vedanta',t:'Rsi Badarayana',f:'Metafisika dan Upanisad',d:'Vedanta berpijak pada Upanisad dan membahas hakikat Brahman, Atman, dan kesatuan keduanya.',p:['Berdasar Upanisad, Bhagavad Gita, dan Brahmasutra','Tujuan akhir: moksa lewat pengetahuan tentang Brahman','Kitab dasar: Brahmasutra']}
+];
+const QUIZ = [
+ ['Siapakah pendiri aliran Nyaya?',['Rsi Kanada','Rsi Gautama','Rsi Kapila','Rsi Jaimini'],1],
+ ['Aliran yang menjelaskan alam tersusun dari atom adalah ...',['Samkhya','Mimamsa','Vaisesika','Yoga'],2],
+ ['Dua unsur dasar dalam dualisme Samkhya adalah ...',['Atman dan Brahman','Purusa dan Prakrti','Dharma dan Karma','Guna dan Dravya'],1],
+ ['Yoga Sutra disusun oleh ...',['Rsi Patanjali','Rsi Gautama','Rsi Badarayana','Rsi Kapila'],0],
+ ['Berapa tahap dalam Astangga Yoga?',['Enam','Tujuh','Delapan','Sembilan'],2],
+ ['Mimamsa terutama menekankan ...',['Atomisme','Ritual dan tafsir Weda','Meditasi','Logika formal'],1],
+ ['Vedanta berpijak terutama pada ...',['Upanisad','Nyaya Sutra','Samkhya Karika','Kitab Smrti hukum'],0],
+ ['Berapa pramana dalam Nyaya?',['Dua','Tiga','Empat','Lima'],2],
+ ['Kategori realitas dalam Vaisesika disebut ...',['Guna','Padartha','Citta','Yajna'],1],
+ ['Tiga guna dalam Samkhya adalah ...',['Sattwa, rajas, tamas','Dharma, artha, kama','Brahma, Wisnu, Siwa','Sabda, anumana, upamana'],0],
+ ['Pendiri aliran Mimamsa adalah ...',['Rsi Kanada','Rsi Patanjali','Rsi Jaimini','Rsi Gautama'],2],
+ ['Brahmasutra dikaitkan dengan aliran ...',['Nyaya','Yoga','Vaisesika','Vedanta'],3]
+];
+const $ = id => document.getElementById(id);
+
+// Navigasi
+function switchTab(id) {
+  document.querySelectorAll('.tab-content').forEach(s => s.classList.add('hidden'));
+  $('tab-' + id).classList.remove('hidden');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const on = b.dataset.tab === id;
+    b.classList.toggle('bg-purple-600', on); b.classList.toggle('text-white', on);
+  });
+  window.scrollTo({ top: 0 });
+}
+$('nav-desktop').innerHTML = TABS.map(t => `<button data-tab="${t[0]}" onclick="switchTab('${t[0]}')" class="nav-btn px-3 py-2 rounded-xl text-sm font-medium text-purple-200 hover:bg-white/10">${t[1]} ${t[2]}</button>`).join('');
+$('mobile-menu').innerHTML = TABS.map(t => `<button onclick="switchTab('${t[0]}');$('mobile-menu').classList.add('hidden')" class="text-left px-4 py-2 rounded-xl hover:bg-white/10 text-purple-200">${t[1]} ${t[2]}</button>`).join('');
+
+// Materi
+function selectMateri(i) {
+  document.querySelectorAll('.m-tab-btn').forEach((b, k) => {
+    b.className = 'm-tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ' + (k === i ? 'bg-purple-600 text-white' : 'glass-card text-purple-200');
+  });
+  const d = DARSANA[i];
+  $('materi-display-box').innerHTML = `
+    <div><h3 class="cinzel text-3xl font-bold text-glow">${d.n}</h3><p class="text-purple-300 text-sm mt-1">Pendiri: ${d.t} · ${d.f}</p></div>
+    <p class="text-purple-100 leading-relaxed max-w-2xl">${d.d}</p>
+    <ul class="space-y-2 max-w-2xl">${d.p.map(x => `<li class="glass-card rounded-xl px-4 py-3 text-sm text-purple-100">${x}</li>`).join('')}</ul>`;
+}
+$('materi-tabs').innerHTML = DARSANA.map((d, i) => `<button onclick="selectMateri(${i})" class="m-tab-btn">${i + 1}. ${d.n}</button>`).join('');
+$('peta-grid').innerHTML = DARSANA.map((d, i) => `<button onclick="selectMateri(${i});switchTab('materi')" class="glass-card p-5 rounded-2xl text-center space-y-1"><h4 class="cinzel font-bold text-lg">${d.n}</h4><p class="text-xs text-purple-300">${d.f}</p><p class="text-xs text-purple-400">${d.t}</p></button>`).join('');
+const ANGGOTA = [
+  ['I Dewa Ayu Hanny Pradnya Nitaswari','10'],
+  ['Kadek Anindya Citra Kirana','26'],
+  ['Anak Agung Sri Ambarawati','01'],
+  ['Putu Octhaviyanti','42'],
+  ['Ni Putu Wulan Kusumayanti','39'],
+  ['Putu Citra Rasmini','41'],
+  ['Ni Made Putri Swandini','35'],
+  ['I Putu Galang Aditya','25']
+];
+$('profil-grid').innerHTML = ANGGOTA.map(([nama, absen], i) => `<div class="glass-card p-6 rounded-3xl text-center space-y-3"><div class="w-16 h-16 mx-auto rounded-full cosmic-gradient flex items-center justify-center text-2xl font-bold cinzel">${i+1}</div><h4 class="cinzel font-bold leading-snug">${nama}</h4><p class="text-xs text-purple-300">No. Absen ${absen}</p></div>`).join('');
+selectMateri(0);
+
+// Kuis
+let qi = 0, qs = 0, locked = false;
+function startQuiz() { qi = 0; qs = 0; $('quiz-start').classList.add('hidden'); $('quiz-result').classList.add('hidden'); $('quiz-active').classList.remove('hidden'); showQ(); }
+function showQ() {
+  locked = false; const q = QUIZ[qi];
+  $('quiz-progress-text').textContent = `Soal ${qi + 1} dari ${QUIZ.length}`;
+  $('quiz-score-badge').textContent = 'Skor: ' + qs;
+  $('quiz-question').textContent = q[0];
+  $('quiz-feedback').textContent = '';
+  $('quiz-next-btn').classList.add('hidden');
+  $('quiz-next-btn').textContent = qi === QUIZ.length - 1 ? 'Lihat hasil' : 'Soal berikutnya';
+  $('quiz-options').innerHTML = q[1].map((o, k) => `<button class="opt glass-card" onclick="answerQ(${k})">${String.fromCharCode(65 + k)}. ${o}</button>`).join('');
+}
+function answerQ(k) {
+  if (locked) return; locked = true;
+  const c = QUIZ[qi][2], btns = $('quiz-options').children;
+  btns[c].classList.add('ok');
+  if (k === c) { qs += 10; $('quiz-feedback').textContent = 'Benar! +10 poin.'; }
+  else { btns[k].classList.add('bad'); $('quiz-feedback').textContent = 'Kurang tepat. Jawaban yang benar: ' + QUIZ[qi][1][c] + '.'; }
+  $('quiz-score-badge').textContent = 'Skor: ' + qs;
+  $('quiz-next-btn').classList.remove('hidden');
+}
+function nextQuestion() {
+  if (qi < QUIZ.length - 1) { qi++; showQ(); return; }
+  $('quiz-active').classList.add('hidden'); $('quiz-result').classList.remove('hidden');
+  $('final-score-display').textContent = `Skor Anda: ${qs} / ${QUIZ.length * 10}`;
+  $('final-title').textContent = qs >= 100 ? 'Predikat: Master Kosmik' : qs >= 70 ? 'Predikat: Penjelajah Galaksi' : 'Predikat: Kadet Antariksa. Pelajari materi lalu coba lagi.';
+  $('cert-who').textContent = `${USER.nama} · No. Absen ${USER.absen}`;
+  $('cert-box').classList.toggle('hidden', qs < 70);
+  if (qs >= 70 && window.confetti) confetti({ particleCount: 140, spread: 80, origin: { y: .6 } });
+}
+async function downloadCert() {
+  const nama = USER.nama, absen = USER.absen;
+  if (!nama || !absen) { openGate(); return; }
+  const predikat = qs >= 100 ? 'Master Kosmik' : 'Penjelajah Galaksi';
+  try { await Promise.all([document.fonts.load('700 60px Cinzel'), document.fonts.load('500 24px Cinzel'), document.fonts.load('600 24px "Plus Jakarta Sans"')]); } catch (e) {}
+  const W = 1600, H = 1131, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  const bg = x.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b0620'); bg.addColorStop(.5, '#1a0b3d'); bg.addColorStop(1, '#0a1230');
+  x.fillStyle = bg; x.fillRect(0, 0, W, H);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 160; i++) { x.fillStyle = `rgba(255,255,255,${.2 + rnd() * .6})`; x.beginPath(); x.arc(rnd() * W, rnd() * H, rnd() * 1.8 + .3, 0, 7); x.fill(); }
+  const gr = x.createLinearGradient(0, 0, W, 0); gr.addColorStop(0, '#8b5cf6'); gr.addColorStop(.5, '#ec4899'); gr.addColorStop(1, '#3b82f6');
+  x.strokeStyle = gr; x.lineWidth = 8; x.strokeRect(40, 40, W - 80, H - 80);
+  x.strokeStyle = 'rgba(196,181,253,.5)'; x.lineWidth = 2; x.strokeRect(62, 62, W - 124, H - 124);
+  x.textAlign = 'center'; x.fillStyle = '#e9d5ff';
+  x.font = '120px serif'; x.fillText('🕉️', W / 2, 220);
+  x.font = '700 78px Cinzel, serif'; x.fillStyle = '#fff'; x.fillText('SERTIFIKAT', W / 2, 330);
+  x.font = '500 26px Cinzel, serif'; x.fillStyle = '#c4b5fd'; x.fillText('PENGHARGAAN PENJELAJAH SAD DARSANA', W / 2, 380);
+  x.font = '600 26px "Plus Jakarta Sans", sans-serif'; x.fillStyle = '#d8b4fe'; x.fillText('Diberikan kepada', W / 2, 475);
+  let fs = 84; x.font = `700 ${fs}px Cinzel, serif`;
+  while (x.measureText(nama).width > W - 300 && fs > 30) { fs -= 4; x.font = `700 ${fs}px Cinzel, serif`; }
+  x.fillStyle = gr; x.fillText(nama, W / 2, 580);
+  x.fillStyle = gr; x.fillRect(W / 2 - 330, 615, 660, 3);
+  x.font = '600 28px "Plus Jakarta Sans", sans-serif'; x.fillStyle = '#d8b4fe'; x.fillText('No. Absen ' + absen, W / 2, 660);
+  x.font = '600 28px "Plus Jakarta Sans", sans-serif'; x.fillStyle = '#e9d5ff';
+  x.fillText('atas keberhasilan menyelesaikan Kuis Kosmik Sad Darsana', W / 2, 730);
+  x.fillText(`dengan skor ${qs} dari ${QUIZ.length * 10}`, W / 2, 775);
+  x.font = '700 44px Cinzel, serif'; x.fillStyle = '#f9a8d4'; x.fillText('Predikat: ' + predikat, W / 2, 860);
+  const tgl = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  x.font = '500 24px "Plus Jakarta Sans", sans-serif'; x.fillStyle = '#c4b5fd';
+  x.fillText(tgl, W / 2, 965);
+  x.font = '500 22px Cinzel, serif'; x.fillText('MPI Sad Darsana · Kelompok 3', W / 2, 1000);
+  const fname = 'Sertifikat-Sad-Darsana-' + nama.replace(/[^\w]+/g, '-') + '-' + absen.replace(/[^\w]+/g, '') + '.png';
+  const dl = (window.claude && window.claude.use) ? await window.claude.use('downloads') : null;
+  if (dl) {
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    try { await dl.save({ filename: fname, data: blob }); } catch (e) { /* viewer declined or unavailable */ }
+    return;
+  }
+  const a = document.createElement('a');
+  a.download = fname;
+  a.href = c.toDataURL('image/png'); a.click();
+}
+function resetQuiz() { $('cert-box').classList.add('hidden'); $('quiz-result').classList.add('hidden'); $('quiz-start').classList.remove('hidden'); }
+
+// Game orbit
+const CLUES = [];
+DARSANA.forEach((d, i) => { CLUES.push([d.t, i]); CLUES.push([d.f, i]); });
+let gr = 0, gs = 0, gAns = -1, gOn = false, gPool = [];
+function startGame() {
+  gr = 0; gs = 0; gOn = true;
+  gPool = CLUES.slice().sort(() => Math.random() - .5).slice(0, 10);
+  $('g-start').classList.add('hidden'); gNext();
+}
+function gNext() {
+  if (gr >= 10) { gOn = false; $('g-clue').textContent = `Selesai! Skor akhir ${gs} / 100`; $('g-options').innerHTML = ''; $('g-start').textContent = 'Main lagi'; $('g-start').classList.remove('hidden'); if (gs >= 70 && window.confetti) confetti({ particleCount: 120, spread: 70, origin: { y: .6 } }); return; }
+  const [clue, ans] = gPool[gr]; gAns = ans; gr++;
+  $('g-round').textContent = `Putaran ${gr} / 10`; $('g-score').textContent = 'Skor: ' + gs;
+  $('g-clue').textContent = clue;
+  $('g-options').innerHTML = DARSANA.map((d, i) => `<button class="opt glass-card text-center font-semibold" onclick="gPick(${i}, this)">${d.n}</button>`).join('');
+}
+function gPick(i, el) {
+  if (!gOn) return; gOn = false;
+  const b = $('g-options').children;
+  b[gAns].classList.add('ok');
+  if (i === gAns) gs += 10; else el.classList.add('bad');
+  $('g-score').textContent = 'Skor: ' + gs;
+  setTimeout(() => { gOn = true; gNext(); }, 900);
+}
+
+// Musik (sintesis WebAudio, tanpa file eksternal)
+let ac = null, nodes = [], playing = false;
+function toggleAudio() {
+  try {
+    if (!playing) {
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      ac.resume();
+      const g = ac.createGain(); g.gain.value = .05; g.connect(ac.destination);
+      nodes = [110, 165, 220].map(f => { const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.connect(g); o.start(); return o; });
+      nodes.push(g); playing = true; $('audio-icon').textContent = '🔊';
+    } else {
+      nodes.forEach(n => { try { n.stop ? n.stop() : n.disconnect(); } catch (e) {} });
+      nodes = []; playing = false; $('audio-icon').textContent = '🔇';
+    }
+  } catch (e) { console.error('Audio tidak tersedia', e); }
+}
+
+// Latar bintang
+(function () {
+  const c = $('starfield'), x = c.getContext('2d'); let w, h, stars = [];
+  function size() { w = c.width = innerWidth; h = c.height = innerHeight; stars = Array.from({ length: Math.min(160, Math.floor(w * h / 9000)) }, () => ({ x: Math.random() * w, y: Math.random() * h, r: Math.random() * 1.4 + .3, v: Math.random() * .25 + .05, a: Math.random() })); }
+  function draw() {
+    x.clearRect(0, 0, w, h);
+    stars.forEach(s => { s.y += s.v; s.a += .02; if (s.y > h) { s.y = 0; s.x = Math.random() * w; } x.globalAlpha = .4 + .4 * Math.sin(s.a); x.fillStyle = '#e9d5ff'; x.beginPath(); x.arc(s.x, s.y, s.r, 0, 6.283); x.fill(); });
+    requestAnimationFrame(draw);
+  }
+  addEventListener('resize', size); size(); draw();
+})();
+switchTab('home');
+
+// Gerbang identitas
+function openGate() {
+  $('gate').classList.remove('hidden'); document.body.style.overflow = 'hidden';
+  $('gate-name').value = USER.nama; $('gate-absen').value = USER.absen; $('gate-error').textContent = '';
+  setTimeout(() => $('gate-name').focus(), 50);
+}
+function submitGate(e) {
+  e.preventDefault();
+  const nama = $('gate-name').value.replace(/\s+/g, ' ').trim();
+  const absen = $('gate-absen').value.replace(/\D/g, '');
+  if (nama.length < 3) { $('gate-error').textContent = 'Nama lengkap minimal 3 huruf ya.'; $('gate-name').focus(); return; }
+  if (!absen || +absen < 1) { $('gate-error').textContent = 'Nomor absen wajib diisi dengan angka.'; $('gate-absen').focus(); return; }
+  USER = { nama, absen: absen.padStart(2, '0') };
+  $('hello').textContent = `Halo, ${USER.nama}! 👋`;
+  $('user-chip-text').textContent = `${USER.nama} · ${USER.absen}`;
+  $('user-chip').classList.remove('hidden'); $('user-chip').classList.add('flex');
+  $('gate').classList.add('hidden'); document.body.style.overflow = '';
+  switchTab('home');
+}
+$('gate-absen').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, ''); });
+openGate();
+</script>
+</body>
+</html>
